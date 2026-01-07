@@ -1,0 +1,121 @@
+@rendermode InteractiveServer
+@inject Services.IPhotoDeleteService PhotoDeleteService
+
+<h2 class="mt-4">Uploaded Files</h2>
+
+@if (uploadedFiles.Any())
+{
+	<div class="mb-3">
+		<button type="button" class="btn btn-danger" @onclick="DeleteSelectedFiles" disabled="@(!selectedFiles.Any() || isDeleting)">
+			@if (isDeleting)
+			{
+				<span>Deleting...</span>
+			}
+			else
+			{
+				<span>Delete Selected (@selectedFiles.Count)</span>
+			}
+		</button>
+	</div>
+
+	<div class="list-group">
+		@foreach (var file in uploadedFiles)
+		{
+			<div class="list-group-item d-flex align-items-center">
+				<input type="checkbox" class="form-check-input me-3" 
+					   checked="@selectedFiles.Contains(file.FileName)"
+					   @onchange="@(e => ToggleFileSelection(file.FileName, (bool)e.Value!))" />
+				<img src="@file.ThumbnailUrl" alt="@file.FileName" style="max-width:80px; max-height:80px; margin-right:15px;" />
+				<div class="flex-grow-1">
+					<strong>@file.DisplayName</strong>
+					<br />
+					<small class="text-muted">@file.UploadDate.ToString("g")</small>
+				</div>
+			</div>
+		}
+	</div>
+}
+else
+{
+	<p class="text-muted">No files uploaded yet.</p>
+}
+
+@if (!string.IsNullOrEmpty(deleteMessage))
+{
+	<div class="alert @deleteAlertClass mt-3">
+		@deleteMessage
+	</div>
+}
+
+@code {
+	private List<Services.UploadedFileInfo> uploadedFiles = new();
+	private HashSet<string> selectedFiles = new();
+	private bool isDeleting = false;
+	private string deleteMessage = string.Empty;
+	private string deleteAlertClass = string.Empty;
+
+	[Parameter]
+	public EventCallback OnFilesChanged { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadUploadedFiles();
+	}
+
+	public async Task RefreshAsync()
+	{
+		await LoadUploadedFiles();
+		StateHasChanged();
+	}
+
+	private async Task LoadUploadedFiles()
+	{
+		uploadedFiles = await PhotoDeleteService.GetUploadedFilesAsync();
+		selectedFiles.Clear();
+		deleteMessage = string.Empty;
+	}
+
+	private void ToggleFileSelection(string fileName, bool isSelected)
+	{
+		if (isSelected)
+		{
+			selectedFiles.Add(fileName);
+		}
+		else
+		{
+			selectedFiles.Remove(fileName);
+		}
+	}
+
+	private async Task DeleteSelectedFiles()
+	{
+		if (!selectedFiles.Any())
+		{
+			return;
+		}
+
+		isDeleting = true;
+		deleteMessage = string.Empty;
+
+		try
+		{
+			var count = selectedFiles.Count;
+			await PhotoDeleteService.DeletePhotosAsync(selectedFiles.ToList());
+			
+			deleteMessage = $"{count} file(s) deleted successfully!";
+			deleteAlertClass = "alert-success";
+
+			await LoadUploadedFiles();
+			await OnFilesChanged.InvokeAsync();
+		}
+		catch (Exception ex)
+		{
+			deleteMessage = $"Error deleting files: {ex.Message}";
+			deleteAlertClass = "alert-danger";
+		}
+		finally
+		{
+			isDeleting = false;
+		}
+	}
+}

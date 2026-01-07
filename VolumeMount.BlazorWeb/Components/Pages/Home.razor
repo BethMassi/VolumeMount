@@ -1,0 +1,118 @@
+﻿@* @inject HttpClient Http *@
+@rendermode InteractiveServer
+@inject IJSRuntime JSRuntime
+@inject Services.IPhotoUploadService PhotoUploadService
+@inject Services.IPhotoDeleteService PhotoDeleteService
+
+@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<h1>Upload Picture</h1>
+
+<EditForm Model="@model" OnSubmit="@HandleSubmit">
+	<label for="pictureFile" class="form-label">Select Image</label>
+	<InputFile id="pictureFile" OnChange="@OnFileChange" class="form-control" accept="image/*" />
+
+	<img src="@model.PreviewImageUrl" alt="Selected image preview" style="max-width:250px;" />
+
+	<button type="submit" class="btn btn-primary" disabled="@(!fileSelected || isUploading)">
+		@if (isUploading)
+		{		
+			<span> Uploading...</span>
+		}
+		else
+		{
+			<span>Upload</span>
+		}
+	</button>
+</EditForm>
+
+<UploadedFilesList @ref="uploadedFilesList" OnFilesChanged="OnFilesChanged" />
+
+@if (!string.IsNullOrEmpty(message))
+{
+	<div class="alert @alertClass mt-3">
+		@message
+	</div>
+}
+
+<div class="alert alert-info mt-3">
+		<strong>Current Directory:</strong> @env
+</div>
+@code
+{
+	private IBrowserFile? selectedFile;
+	private bool fileSelected = false;
+	private string message = string.Empty;	
+	private string alertClass = string.Empty;
+	//private byte[]? photo;
+	private UploadModel model = new UploadModel();
+	private bool isUploading = false;	
+	private string env = Environment.CurrentDirectory;
+	private UploadedFilesList? uploadedFilesList;
+
+
+	public class UploadModel
+	{
+		public string PreviewImageUrl { get; set; } = string.Empty;
+	}
+
+	private async Task OnFileChange(InputFileChangeEventArgs e)
+	{
+		message = string.Empty;
+		selectedFile = e.File;
+		fileSelected = true;
+
+		using var ms = new MemoryStream();
+		await selectedFile.OpenReadStream(maxAllowedSize: 10485760).CopyToAsync(ms);
+		model.PreviewImageUrl = $"data:image/png;base64,{Convert.ToBase64String(ms.ToArray())}";
+	}
+
+	private async Task HandleSubmit()
+	{
+		if (!fileSelected || selectedFile == null)
+		{
+			message = "Please select a photo";
+			alertClass = "alert-warning";
+			return;
+		}
+
+		isUploading = true;
+		message = string.Empty;
+
+		try
+		{
+			await PhotoUploadService.UploadPhotoAsync(selectedFile);
+
+			message = $"Picture '{selectedFile.Name}' uploaded successfully!";
+			alertClass = "alert-success";
+
+			// Reset the form
+			fileSelected = false;
+			selectedFile = null;
+			model.PreviewImageUrl = string.Empty;
+
+			// Refresh the uploaded files list
+			if (uploadedFilesList != null)
+			{
+				await uploadedFilesList.RefreshAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			message = $"Error uploading file: {ex.Message}";
+			alertClass = "alert-danger";
+		}
+		finally
+		{
+			isUploading = false;
+		}
+	}
+	private async Task OnFilesChanged()
+	{
+		// Optional: Handle any additional logic when files are deleted
+		await Task.CompletedTask;
+	}
+	
+}
