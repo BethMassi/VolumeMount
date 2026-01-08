@@ -17,22 +17,18 @@ builder.Services.AddLogging(logging =>
 // Add Docker Compose environment
 var compose = builder.AddDockerComposeEnvironment("volumemount-env")
     .WithProperties(env =>
-{
-    env.DashboardEnabled = true;
-});
-
-if (!builder.Environment.IsDevelopment())
-{
-    compose.ConfigureComposeFile(composeFile =>
+    {
+        env.DashboardEnabled = true;
+    })
+    .ConfigureComposeFile(composeFile =>
      {
          // Add the blazor-uploads volume to the top-level volumes section
          composeFile.AddVolume(new Volume
-         {
-             Name = "volumemount-blazor-uploads",
-             Driver = "local"
-         });
-     });
-}
+                               {
+                                   Name = "volumemount-blazor-uploads",
+                                   Driver = "local"
+                               });
+     }); 
 
 var sqlPassword = builder.AddParameter("sqlserver-password", secret: true);
 var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
@@ -55,34 +51,30 @@ var sqlDatabase = sqlserver.AddDatabase("sqldb");
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
         .WithExternalHttpEndpoints()
         .WithReference(sqlDatabase)
-        .WaitFor(sqlDatabase);
-
-//Deploy the Blazor Web project as a Docker Compose service with a volume mount for uploads
-if (!builder.Environment.IsDevelopment())
-{
-    blazorweb.PublishAsDockerComposeService((resource, service) =>
-    {
-        service.AddVolume(new Volume
+        .WaitFor(sqlDatabase)
+        //Deploy the Blazor Web project as a Docker Compose service with a volume mount for uploads
+        .PublishAsDockerComposeService((resource, service) =>
         {
-            Name = "volumemount-blazor-uploads",
-            Source = "volumemount-blazor-uploads",
-            Target = "/app/wwwroot/uploads",
-            Type = "volume",
-            ReadOnly = false
-        });
-        // Run container as root initially to fix permissions
-        service.User = "root";
+            service.AddVolume(new Volume
+            {
+                Name = "volumemount-blazor-uploads",
+                Source = "volumemount-blazor-uploads",
+                Target = "/app/wwwroot/uploads",
+                Type = "volume",
+                ReadOnly = false
+            });
+            // Run container as root initially to fix permissions
+            service.User = "root";
 
-        // Override the entrypoint to fix permissions so users can write (upload pictures)
-        // to the volume then run the default entrypoint as app user
-        service.Command = new List<string>
-        {
-            "/bin/sh",
-            "-c",
-            "chown -R app:app /app/wwwroot/uploads && chmod -R 755 /app/wwwroot/uploads && exec su app -c 'dotnet /app/VolumeMount.BlazorWeb.dll'"
-        };
+            // Override the entrypoint to fix permissions so users can write (upload pictures)
+            // to the volume then run the default entrypoint as app user
+            service.Command = new List<string>
+            {
+                "/bin/sh",
+                "-c",
+                "chown -R app:app /app/wwwroot/uploads && chmod -R 755 /app/wwwroot/uploads && exec su app -c 'dotnet /app/VolumeMount.BlazorWeb.dll'"
+            };
 
-    });
-}
+        }); 
 
 builder.Build().Run();
