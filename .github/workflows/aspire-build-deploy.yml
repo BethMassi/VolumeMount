@@ -42,6 +42,9 @@ jobs:
       - name: Build solution
         run: dotnet build --configuration Release --no-restore
 
+      - name: Install .NET Aspire tools
+        run: dotnet tool install -g Microsoft.Aspire.Cli --prerelease || true
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -54,8 +57,8 @@ jobs:
 
       - name: Generate Aspire manifest
         run: |
-          aspire manifest generate \
-            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+          dotnet run --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --publisher manifest \
             --output-path ./aspire-manifest.json
 
       - name: Display manifest
@@ -80,14 +83,16 @@ jobs:
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Build and push with Aspire CLI
+      - name: Build and push with dotnet publish
         id: aspire_build
         run: |
-          aspire build \
-            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+          # Publish the Blazor Web project as a container and push to registry
+          dotnet publish VolumeMount.BlazorWeb/VolumeMount.BlazorWeb.csproj \
             --configuration Release \
-            --registry ghcr.io \
-            --repository-prefix bethmassi/volumemount
+            /t:PublishContainer \
+            -p:ContainerRegistry=ghcr.io \
+            -p:ContainerRepository=bethmassi/volumemount/blazorweb \
+            -p:ContainerImageTag=latest
 
       - name: Tag and push additional image tags
         run: |
