@@ -159,14 +159,26 @@ jobs:
           push-to-registry: true
 
       - name: Upload manifest artifact
+        run: |
+          # Find the manifest file and upload it
+          if [ -f aspire-manifest.json ]; then
+            MANIFEST_PATH="aspire-manifest.json"
+          elif [ -f ./aspire-manifest.json ]; then
+            MANIFEST_PATH="./aspire-manifest.json"
+          else
+            echo "Warning: Manifest file not found for upload"
+            exit 0
+          fi
+          echo "manifest_path=${MANIFEST_PATH}" >> $GITHUB_OUTPUT
+        id: find_manifest
+
+      - name: Upload manifest to artifacts
+        if: steps.find_manifest.outputs.manifest_path != ''
         uses: actions/upload-artifact@v4
         with:
           name: aspire-manifest
-          path: |
-            aspire-manifest.json
-            ./aspire-manifest.json
+          path: ${{ steps.find_manifest.outputs.manifest_path }}
           retention-days: 30
-        continue-on-error: true
 
       - name: Output deployment summary
         run: |
