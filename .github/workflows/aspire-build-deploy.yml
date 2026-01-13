@@ -64,6 +64,16 @@ jobs:
       - name: Display manifest
         run: cat ./aspire-manifest.json
 
+      - name: Display generated Docker Compose
+        run: |
+          if [ -f ./aspire-output/docker-compose.yml ]; then
+            echo "Generated Docker Compose file:"
+            cat ./aspire-output/docker-compose.yml
+          else
+            echo "Docker Compose file not found in expected location"
+            find ./aspire-output -name "*.yml" -o -name "*.yaml"
+          fi
+
       - name: Extract image tags
         id: extract_tags
         run: |
@@ -83,13 +93,13 @@ jobs:
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
 
-      - name: Publish with Aspire CLI
+      - name: Prepare Docker Compose with Aspire
         id: aspire_build
         run: |
-          # Publish the Aspire application using docker-compose publisher
-          # This will build container images for all services
-          aspire publish --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
-            --publisher docker-compose \
+          # Use Aspire CLI to prepare Docker Compose files and build container images
+          # This generates docker-compose.yml and builds all service images
+          aspire do prepare-compose --environment production \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
             --output-path ./aspire-output
 
       - name: Tag and push images to GHCR
