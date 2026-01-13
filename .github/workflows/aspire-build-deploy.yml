@@ -57,7 +57,8 @@ jobs:
 
       - name: Generate Aspire manifest
         run: |
-          aspire manifest --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+          dotnet run --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --publisher manifest \
             --output-path ./aspire-manifest.json
 
       - name: Display manifest
