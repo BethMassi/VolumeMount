@@ -60,9 +60,9 @@ jobs:
         run: |
           # Use Aspire CLI to prepare Docker Compose files and build container images
           # This generates docker-compose.yml and builds all service images
-          # Default output directory is ./aspire-output
           aspire do prepare-compose --environment production \
-            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --output-path ./aspire-output
 
       - name: Display generated Docker Compose
         run: |
