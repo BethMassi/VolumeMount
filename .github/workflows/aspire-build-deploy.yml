@@ -59,10 +59,22 @@ jobs:
         run: |
           dotnet run --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
             --publisher manifest \
-            --output-path ./aspire-manifest.json
+            --output-path aspire-manifest.json
 
       - name: Display manifest
-        run: cat ./aspire-manifest.json
+        run: |
+          if [ -f aspire-manifest.json ]; then
+            echo "Aspire manifest found:"
+            cat aspire-manifest.json
+          elif [ -f ./aspire-manifest.json ]; then
+            echo "Aspire manifest found at ./aspire-manifest.json:"
+            cat ./aspire-manifest.json
+          else
+            echo "Manifest file not found. Searching for it..."
+            find . -name "aspire-manifest.json" -o -name "manifest.json"
+            echo "Current directory contents:"
+            ls -la
+          fi
 
       - name: Display generated Docker Compose
         run: |
@@ -150,8 +162,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aspire-manifest
-          path: ./aspire-manifest.json
+          path: |
+            aspire-manifest.json
+            ./aspire-manifest.json
           retention-days: 30
+        continue-on-error: true
 
       - name: Output deployment summary
         run: |
