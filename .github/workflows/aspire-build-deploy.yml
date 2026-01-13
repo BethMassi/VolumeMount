@@ -112,8 +112,7 @@ jobs:
           docker tag $ASPIRE_IMAGE ghcr.io/bethmassi/volumemount/blazorweb:latest
           docker push ghcr.io/bethmassi/volumemount/blazorweb:latest
 
-          # Get image digest
-          docker pull ghcr.io/bethmassi/volumemount/blazorweb:latest
+          # Get image digest from the pushed image
           IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/bethmassi/volumemount/blazorweb:latest | cut -d'@' -f2)
           echo "image_digest=${IMAGE_DIGEST}" >> $GITHUB_OUTPUT
 
