@@ -55,35 +55,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Aspire manifest
+      - name: Prepare Docker Compose with Aspire
+        id: aspire_build
         run: |
-          dotnet run --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
-            --publisher manifest \
-            --output-path aspire-manifest.json
-
-      - name: Display manifest
-        run: |
-          if [ -f aspire-manifest.json ]; then
-            echo "Aspire manifest found:"
-            cat aspire-manifest.json
-          elif [ -f ./aspire-manifest.json ]; then
-            echo "Aspire manifest found at ./aspire-manifest.json:"
-            cat ./aspire-manifest.json
-          else
-            echo "Manifest file not found. Searching for it..."
-            find . -name "aspire-manifest.json" -o -name "manifest.json"
-            echo "Current directory contents:"
-            ls -la
-          fi
+          # Use Aspire CLI to prepare Docker Compose files and build container images
+          # This generates docker-compose.yml and builds all service images
+          # Default output directory is ./aspire-output
+          aspire do prepare-compose --environment production \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj
 
       - name: Display generated Docker Compose
         run: |
+          echo "Contents of aspire-output directory:"
+          ls -la ./aspire-output/ || echo "aspire-output directory not found"
+
           if [ -f ./aspire-output/docker-compose.yml ]; then
+            echo ""
             echo "Generated Docker Compose file:"
             cat ./aspire-output/docker-compose.yml
+          elif [ -f ./aspire-output/docker-compose.yaml ]; then
+            echo ""
+            echo "Generated Docker Compose file:"
+            cat ./aspire-output/docker-compose.yaml
           else
-            echo "Docker Compose file not found in expected location"
-            find ./aspire-output -name "*.yml" -o -name "*.yaml"
+            echo ""
+            echo "Docker Compose file not found. Searching..."
+            find ./aspire-output -name "*.yml" -o -name "*.yaml" 2>/dev/null || echo "No YAML files found"
           fi
 
       - name: Extract image tags
@@ -104,15 +101,6 @@ jobs:
           TAGS="latest,${BRANCH_NAME},${SHORT_SHA}"
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Prepare Docker Compose with Aspire
-        id: aspire_build
-        run: |
-          # Use Aspire CLI to prepare Docker Compose files and build container images
-          # This generates docker-compose.yml and builds all service images
-          aspire do prepare-compose --environment production \
-            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
-            --output-path ./aspire-output
 
       - name: Tag and push images to GHCR
         run: |
@@ -158,27 +146,13 @@ jobs:
           subject-digest: ${{ steps.tag_images.outputs.image_digest }}
           push-to-registry: true
 
-      - name: Upload manifest artifact
-        run: |
-          # Find the manifest file and upload it
-          if [ -f aspire-manifest.json ]; then
-            MANIFEST_PATH="aspire-manifest.json"
-          elif [ -f ./aspire-manifest.json ]; then
-            MANIFEST_PATH="./aspire-manifest.json"
-          else
-            echo "Warning: Manifest file not found for upload"
-            exit 0
-          fi
-          echo "manifest_path=${MANIFEST_PATH}" >> $GITHUB_OUTPUT
-        id: find_manifest
-
-      - name: Upload manifest to artifacts
-        if: steps.find_manifest.outputs.manifest_path != ''
+      - name: Upload Docker Compose artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aspire-manifest
-          path: ${{ steps.find_manifest.outputs.manifest_path }}
+          name: aspire-docker-compose
+          path: ./aspire-output/
           retention-days: 30
+        continue-on-error: true
 
       - name: Output deployment summary
         run: |
