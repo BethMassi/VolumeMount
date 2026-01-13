@@ -1,0 +1,149 @@
+name: Aspire Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: bethmassi/volumemount
+  DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Aspire workload
+        run: dotnet workload install aspire
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Aspire manifest
+        run: |
+          aspire manifest generate \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --output-path ./aspire-manifest.json
+
+      - name: Display manifest
+        run: cat ./aspire-manifest.json
+
+      - name: Extract image tags
+        id: extract_tags
+        run: |
+          # Get short SHA (first 7 characters)
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+          # Extract branch name or use 'main' as default
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          # For pull requests, use the head ref
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH_NAME=${{ github.head_ref }}
+          fi
+
+          # Create tags list
+          TAGS="latest,${BRANCH_NAME},${SHORT_SHA}"
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build and push with Aspire CLI
+        run: |
+          aspire build \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --configuration Release \
+            --registry ghcr.io \
+            --repository-prefix bethmassi/volumemount
+
+      - name: Tag and push additional image tags
+        run: |
+          SHORT_SHA=${{ steps.extract_tags.outputs.short_sha }}
+          BRANCH_NAME=${{ steps.extract_tags.outputs.branch_name }}
+
+          # Pull the image that was just built
+          docker pull ghcr.io/bethmassi/volumemount/blazorweb:latest
+
+          # Tag with branch name and short SHA
+          docker tag ghcr.io/bethmassi/volumemount/blazorweb:latest \
+            ghcr.io/bethmassi/volumemount/blazorweb:${BRANCH_NAME}
+          docker tag ghcr.io/bethmassi/volumemount/blazorweb:latest \
+            ghcr.io/bethmassi/volumemount/blazorweb:${SHORT_SHA}
+
+          # Push all tags
+          docker push ghcr.io/bethmassi/volumemount/blazorweb:${BRANCH_NAME}
+          docker push ghcr.io/bethmassi/volumemount/blazorweb:${SHORT_SHA}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        continue-on-error: true
+        with:
+          subject-name: ghcr.io/bethmassi/volumemount/blazorweb
+          subject-digest: ${{ steps.extract_tags.outputs.short_sha }}
+          push-to-registry: true
+
+      - name: Upload manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspire-manifest
+          path: ./aspire-manifest.json
+          retention-days: 30
+
+      - name: Output deployment summary
+        run: |
+          SHORT_SHA=${{ steps.extract_tags.outputs.short_sha }}
+          BRANCH_NAME=${{ steps.extract_tags.outputs.branch_name }}
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # Deployment Summary
+
+          ## Published Images
+
+          | Image | Tags |
+          |-------|------|
+          | ghcr.io/bethmassi/volumemount/blazorweb | latest, ${BRANCH_NAME}, ${SHORT_SHA} |
+
+          ## Docker Commands
+
+          ### Pull Image
+          \`\`\`bash
+          docker pull ghcr.io/bethmassi/volumemount/blazorweb:latest
+          \`\`\`
+
+          ### Run Container
+          \`\`\`bash
+          docker run -d -p 8080:8080 ghcr.io/bethmassi/volumemount/blazorweb:latest
+          \`\`\`
+          EOF
