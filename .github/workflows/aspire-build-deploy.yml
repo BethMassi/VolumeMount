@@ -81,6 +81,7 @@ jobs:
           echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
 
       - name: Build and push with Aspire CLI
+        id: aspire_build
         run: |
           aspire build \
             --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
@@ -93,8 +94,10 @@ jobs:
           SHORT_SHA=${{ steps.extract_tags.outputs.short_sha }}
           BRANCH_NAME=${{ steps.extract_tags.outputs.branch_name }}
 
-          # Pull the image that was just built
+          # Pull the image that was just built and get its digest
           docker pull ghcr.io/bethmassi/volumemount/blazorweb:latest
+          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/bethmassi/volumemount/blazorweb:latest | cut -d'@' -f2)
+          echo "image_digest=${IMAGE_DIGEST}" >> $GITHUB_OUTPUT
 
           # Tag with branch name and short SHA
           docker tag ghcr.io/bethmassi/volumemount/blazorweb:latest \
@@ -105,13 +108,14 @@ jobs:
           # Push all tags
           docker push ghcr.io/bethmassi/volumemount/blazorweb:${BRANCH_NAME}
           docker push ghcr.io/bethmassi/volumemount/blazorweb:${SHORT_SHA}
+        id: tag_images
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
         continue-on-error: true
         with:
           subject-name: ghcr.io/bethmassi/volumemount/blazorweb
-          subject-digest: ${{ steps.extract_tags.outputs.short_sha }}
+          subject-digest: ${{ steps.tag_images.outputs.image_digest }}
           push-to-registry: true
 
       - name: Upload manifest artifact
