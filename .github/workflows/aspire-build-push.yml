@@ -1,4 +1,4 @@
-name: Aspire Build and Push image
+sname: Aspire Build and Push image
 
 on:
   push:
@@ -78,5 +78,5 @@ jobs:
       - name: Push images with Aspire
         env:
           Parameters__registry_endpoint: ghcr.io
-          Parameters__registry_repository: ${{ github.repository }}
+          Parameters__registry_repository: bethmassi/volumemount
         run: aspire do push --log-level debug
