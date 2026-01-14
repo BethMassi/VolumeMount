@@ -19,7 +19,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: bethmassi/volumemount
   DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: true
-  PARAMETERS_SQLSERVER-PASSWORD: UjAD3{kuT1t2\u002BUBM)XGyHw
 
 jobs:
   build-and-deploy:
