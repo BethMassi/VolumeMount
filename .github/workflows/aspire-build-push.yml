@@ -1,0 +1,86 @@
+name: Aspire Build and Push image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: bethmassi/volumemount
+  
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Install Aspire CLI
+        run: dotnet tool install --global aspire.cli --prerelease
+
+      - name: Verify Aspire CLI installation
+        run: |
+          which aspire
+          aspire --version
+
+      - name: Prepare Docker Compose with Aspire
+        id: aspire_publish
+        run: |
+          aspire publish \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --output-path ./aspire-output
+
+      - name: Display generated Docker Compose
+        run: |
+          echo "Contents of aspire-output directory:"
+          ls -la ./aspire-output/ || echo "aspire-output directory not found"
+
+          if [ -f ./aspire-output/docker-compose.yml ]; then
+            echo ""
+            echo "Generated Docker Compose file:"
+            cat ./aspire-output/docker-compose.yml
+          elif [ -f ./aspire-output/docker-compose.yaml ]; then
+            echo ""
+            echo "Generated Docker Compose file:"
+            cat ./aspire-output/docker-compose.yaml
+          else
+            echo ""
+            echo "Docker Compose file not found. Searching..."
+            find ./aspire-output -name "*.yml" -o -name "*.yaml" 2>/dev/null || echo "No YAML files found"
+          fi
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Push images with Aspire
+        env:
+          Parameters__registry_endpoint: ghcr.io
+          Parameters__registry_repository: ${{ github.repository }}
+        run: aspire do push
