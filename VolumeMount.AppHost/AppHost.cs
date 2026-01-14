@@ -28,7 +28,18 @@ var compose = builder.AddDockerComposeEnvironment("volumemount-env")
                                    Name = "volumemount-blazor-uploads",
                                    Driver = "local"
                                });
-     }); 
+     });
+
+//make sure to login container registry before doing 'aspire deploy'
+//https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic
+var endpoint = builder.AddParameter("registry-endpoint");
+    var repository = builder.AddParameter("registry-repository");
+    #pragma warning disable ASPIRECOMPUTE003
+    builder.AddContainerRegistry("container-registry", endpoint, repository);
+
+//commands:
+//aspire publish (this will create the docker-compose.yml file in the ./aspire-out directory without the parameters)
+//aspire do push (this will be push to the container registry defined above)
 
 var sqlPassword = builder.AddParameter("sqlserver-password", secret: true);
 var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)

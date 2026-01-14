@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /VolumeMount.BlazorWeb/wwwroot/uploads
+/VolumeMount.AppHost/aspire-output/.env.Production
