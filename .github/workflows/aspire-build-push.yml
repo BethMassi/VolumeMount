@@ -15,10 +15,6 @@ permissions:
   id-token: write
   attestations: write
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: bethmassi/volumemount
-  
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
