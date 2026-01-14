@@ -1,4 +1,4 @@
-sname: Aspire Build and Push image
+name: Aspire Build and Push image
 
 on:
   push:
