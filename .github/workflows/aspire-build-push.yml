@@ -79,4 +79,4 @@ jobs:
         env:
           Parameters__registry_endpoint: ghcr.io
           Parameters__registry_repository: ${{ github.repository }}
-        run: aspire do push
+        run: aspire do push --log-level debug
