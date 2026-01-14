@@ -1,4 +1,4 @@
-name: Aspire Build and Deploy
+name: Aspire Build and Push image
 
 on:
   push:
@@ -20,7 +20,7 @@ env:
   IMAGE_PREFIX: bethmassi/volumemount
   
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -44,15 +44,10 @@ jobs:
       - name: Install Aspire CLI
         run: dotnet tool install --global aspire.cli --prerelease
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Aspire CLI installation
+        run: |
+          which aspire
+          aspire --version
 
       - name: Prepare Docker Compose with Aspire
         id: aspire_publish
@@ -62,7 +57,11 @@ jobs:
           # Use Aspire CLI to prepare Docker Compose files and build container images
           # This generates docker-compose.yml and builds all service images
           # do aspire do push later below
-          aspire do prepare-volumemount-env --environment production \
+          # aspire do prepare-volumemount-env --environment production \
+          #  --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+          #  --output-path ./aspire-output
+          # Just publish artifacts first (docker_compose.yml)
+          aspire do publish \            
             --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
             --output-path ./aspire-output
 
@@ -85,100 +84,15 @@ jobs:
             find ./aspire-output -name "*.yml" -o -name "*.yaml" 2>/dev/null || echo "No YAML files found"
           fi
 
-      - name: Extract image tags
-        id: extract_tags
-        run: |
-          # Get short SHA (first 7 characters)
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-
-          # Extract branch name or use 'main' as default
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          # For pull requests, use the head ref
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BRANCH_NAME=${{ github.head_ref }}
-          fi
-
-          # Create tags list
-          TAGS="latest,${BRANCH_NAME},${SHORT_SHA}"
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Tag and push images to GHCR
-        run: |
-          SHORT_SHA=${{ steps.extract_tags.outputs.short_sha }}
-          BRANCH_NAME=${{ steps.extract_tags.outputs.branch_name }}
-
-          # Find the blazorweb image built by Aspire
-          # Aspire typically tags images with project name in lowercase
-          ASPIRE_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep -i blazorweb | head -1)
-
-          if [ -z "$ASPIRE_IMAGE" ]; then
-            echo "Error: Could not find blazorweb image built by Aspire"
-            docker images
-            exit 1
-          fi
-
-          echo "Found Aspire-built image: $ASPIRE_IMAGE"
-
-          # Tag for GHCR with latest tag
-          docker tag $ASPIRE_IMAGE ghcr.io/bethmassi/volumemount/blazorweb:latest
-          docker push ghcr.io/bethmassi/volumemount/blazorweb:latest
-
-          # Get image digest from the pushed image
-          IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/bethmassi/volumemount/blazorweb:latest | cut -d'@' -f2)
-          echo "image_digest=${IMAGE_DIGEST}" >> $GITHUB_OUTPUT
-
-          # Tag with branch name and short SHA
-          docker tag ghcr.io/bethmassi/volumemount/blazorweb:latest \
-            ghcr.io/bethmassi/volumemount/blazorweb:${BRANCH_NAME}
-          docker tag ghcr.io/bethmassi/volumemount/blazorweb:latest \
-            ghcr.io/bethmassi/volumemount/blazorweb:${SHORT_SHA}
-
-          # Push all tags
-          docker push ghcr.io/bethmassi/volumemount/blazorweb:${BRANCH_NAME}
-          docker push ghcr.io/bethmassi/volumemount/blazorweb:${SHORT_SHA}
-        id: tag_images
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v2
-        continue-on-error: true
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          subject-name: ghcr.io/bethmassi/volumemount/blazorweb
-          subject-digest: ${{ steps.tag_images.outputs.image_digest }}
-          push-to-registry: true
-
-      - name: Upload Docker Compose artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: aspire-docker-compose
-          path: ./aspire-output/
-          retention-days: 30
-        continue-on-error: true
-
-      - name: Output deployment summary
-        run: |
-          SHORT_SHA=${{ steps.extract_tags.outputs.short_sha }}
-          BRANCH_NAME=${{ steps.extract_tags.outputs.branch_name }}
-
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          # Deployment Summary
-
-          ## Published Images
-
-          | Image | Tags |
-          |-------|------|
-          | ghcr.io/bethmassi/volumemount/blazorweb | latest, ${BRANCH_NAME}, ${SHORT_SHA} |
-
-          ## Docker Commands
-
-          ### Pull Image
-          \`\`\`bash
-          docker pull ghcr.io/bethmassi/volumemount/blazorweb:latest
-          \`\`\`
-
-          ### Run Container
-          \`\`\`bash
-          docker run -d -p 8080:8080 ghcr.io/bethmassi/volumemount/blazorweb:latest
-          \`\`\`
-          EOF
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Push images with Aspire
+        env:
+          Parameters__registry_endpoint: ghcr.io
+          Parameters__registry_repository: ${{ github.repository }}
+        run: aspire do push
