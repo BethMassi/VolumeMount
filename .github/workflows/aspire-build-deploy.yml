@@ -59,7 +59,9 @@ jobs:
           #  --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
           #  --output-path ./aspire-output
           # Just publish artifacts first (docker_compose.yml)
-          aspire do publish
+          aspire publish \
+            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
+            --output-path ./aspire-output
 
       - name: Display generated Docker Compose
         run: |
