@@ -51,8 +51,6 @@ jobs:
 
       - name: Prepare Docker Compose with Aspire
         id: aspire_publish
-        env:
-          Parameters__sqlserver_password: UjAD3{kuT1t2+UBM)XGyHw
         run: |
           # Use Aspire CLI to prepare Docker Compose files and build container images
           # This generates docker-compose.yml and builds all service images
@@ -62,7 +60,6 @@ jobs:
           #  --output-path ./aspire-output
           # Just publish artifacts first (docker_compose.yml)
           aspire do publish \            
-            --project VolumeMount.AppHost/VolumeMount.AppHost.csproj \
             --output-path ./aspire-output
 
       - name: Display generated Docker Compose
