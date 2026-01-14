@@ -18,7 +18,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: bethmassi/volumemount
-  DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: true
+  DOTNET_ASPIRE_ENABLE_DEPLOY_COMMAND: false
 
 jobs:
   build-and-deploy:
