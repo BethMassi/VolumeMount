@@ -1,4 +1,4 @@
-# Aspire Persistent Volume & GHCR Publish Sample
+# Aspire Sample: Blazor Monolith w/ SQL Database, Persistent Volumes & GHCR Image Publish Workflow
 
 This sample demonstrates how to use <a href="https://aspire.dev">Aspire</a> to orchestrate a multi-container application with persistent data storage and automated deployment to production. It showcases:
 
