@@ -114,23 +114,6 @@ var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
   - Multiple container instances can share the same upload storage
   - Files remain available after application updates
 
-### File Upload Implementation
-
-The Blazor application uses a `PhotoUploadService` that writes files directly to the persistent volume:
-
-```csharp
-public async Task<bool> UploadPhotoAsync(IBrowserFile photo)
-{
-    // Upload path is configured to use the mounted volume
-    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(photo.Name)}";
-    var filePath = Path.Combine(_uploadPath, fileName);
-    
-    await using var fileStream = new FileStream(filePath, FileMode.Create);
-    await using var uploadStream = photo.OpenReadStream(maxAllowedSize: 10485760);
-    await uploadStream.CopyToAsync(fileStream);
-}
-```
-
 ## GitHub Actions Workflow - Aspire CLI Integration
 
 The `.github/workflows/aspire-build-push.yml` workflow demonstrates automated deployment using the Aspire CLI:
