@@ -1,4 +1,4 @@
-# Persistent Volume & GHCR Publish Sample
+# Aspire Persistent Volume & GHCR Publish Sample
 
 This sample demonstrates how to use <a href="https://aspire.dev">Aspire</a> to orchestrate a multi-container application with persistent data storage and automated deployment to production. It showcases:
 
@@ -248,11 +248,12 @@ This will set up the containerized application and volume mounts on your Docker 
 
 **Running the Aspire Dashboard:**
 - The dashboard will be available at `http://localhost:18888` (default port)
+- You will need to provide the login parameter in the URL. To view this key, open the Logs for the container.
 - You can view logs, metrics, and traces for all services
 - Navigate to the services tab to see all running containers
 
 **Running the BlazorWeb app:**
-- Once deployed, the BlazorWeb application will be available on the port specified in your `.env` file (default: 8080)
+- Once deployed, the BlazorWeb application will be available in docker desktop. 
 - Access it at `http://localhost:8080` or the configured port
 - The app connects to the SQL Server container automatically via the configured connection string
 
