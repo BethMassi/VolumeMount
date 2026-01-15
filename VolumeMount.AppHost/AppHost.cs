@@ -59,10 +59,13 @@ var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
 
 var sqlDatabase = sqlserver.AddDatabase("sqldb");
 
+
+#pragma warning disable ASPIREPIPELINES003 //WithRemoteImageTag is in preview
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
         .WithExternalHttpEndpoints()
         .WithReference(sqlDatabase)
         .WaitFor(sqlDatabase)
+        .WithRemoteImageTag("latest")
         //Deploy the Blazor Web project as a Docker Compose service with a volume mount for uploads
         .PublishAsDockerComposeService((resource, service) =>
         {
@@ -86,6 +89,7 @@ var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
                 "chown -R app:app /app/wwwroot/uploads && chmod -R 755 /app/wwwroot/uploads && exec su app -c 'dotnet /app/VolumeMount.BlazorWeb.dll'"
             };
 
-        }); 
+        });
+#pragma warning restore ASPIREPIPELINES003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
 builder.Build().Run();
