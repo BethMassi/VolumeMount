@@ -1,12 +1,22 @@
 name: Aspire Build and Push image
 
 on:
-  push:
+  push: 
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '. gitignore'
   pull_request:
-    branches:
+    branches: 
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
 
 permissions:
