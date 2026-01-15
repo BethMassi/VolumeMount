@@ -1,5 +1,7 @@
 # Aspire Sample: Blazor Monolith w/ SQL Database, Persistent Volumes & GHCR Image Publish Workflow
 
+_I just started learning Aspire and wanted to see how it could used for a simple Blazor web app with SQL database. It was initially created from the [aspire-samples/volumemount](https://github.com/dotnet/aspire-samples/tree/main/samples/volume-mount) sample, but I wanted to also explore how the Docker Integration worked as well as how I could use the aspire CLI in an Actions Workflow to create and publish the image in GitHub Container Registry. Many thanks to captiansafia for her help!_
+
 This sample demonstrates how to use <a href="https://aspire.dev">Aspire</a> to orchestrate a multi-container application with persistent data storage and automated deployment to production. It showcases:
 
 - **Persistent SQL Server volumes** - Database data persists across container restarts
