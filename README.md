@@ -1,6 +1,6 @@
 # Persistent Volume & GHCR Publish Sample
 
-This sample demonstrates how to use .NET Aspire to orchestrate a multi-container application with persistent data storage and automated deployment to production. It showcases:
+This sample demonstrates how to use <a href="https://aspire.dev">Aspire</a> to orchestrate a multi-container application with persistent data storage and automated deployment to production. It showcases:
 
 - **Persistent SQL Server volumes** - Database data persists across container restarts
 - **Persistent file storage volumes** - User-uploaded images persist across container restarts
@@ -222,24 +222,45 @@ docker-compose up -d
 To run the sample locally:
 
 1. Install [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-2. Install [Docker Desktop](https://www.docker.com/products/docker-desktop)
-3. Set the SQL Server password as a user secret:
+2. Install <a href="https://www.docker.com/products/docker-desktop">Docker Desktop</a>
+3. Install <a href="https://aspire.dev/get-started/install-cli/">Aspire CLI</a>
+4. Set the SQL Server password as a user secret:
    ```bash
    dotnet user-secrets set "Parameters:sqlserver-password" "YourSecurePassword123!" --project VolumeMount.AppHost
    ```
-4. Run the AppHost:
+5. Run the AppHost:
    ```bash
    cd VolumeMount.AppHost
-   dotnet run
+   aspire run
    ```
-5. Open the Aspire Dashboard (URL shown in console output)
-6. Access the BlazorWeb application through the dashboard
+6. Open the Aspire Dashboard (URL shown in console output)
+7. Access the BlazorWeb application through the dashboard
+
+## Local Deployment
+
+To containerize and deploy the application locally:
+
+```bash
+aspire deploy
+```
+
+This will set up the containerized application and volume mounts on your Docker desktop.
+
+**Running the Aspire Dashboard:**
+- The dashboard will be available at `http://localhost:18888` (default port)
+- You can view logs, metrics, and traces for all services
+- Navigate to the services tab to see all running containers
+
+**Running the BlazorWeb app:**
+- Once deployed, the BlazorWeb application will be available on the port specified in your `.env` file (default: 8080)
+- Access it at `http://localhost:8080` or the configured port
+- The app connects to the SQL Server container automatically via the configured connection string
 
 ## Production Deployment
 
 To deploy to production using the published artifacts:
 
-1. Download the `docker-compose.yaml` and `.env` files from the Aspire publish output
+1. Download the `docker-compose.yaml` and `.env` files from the Aspire publish output. These are the artifacts you can download as an archive (.zip) from the Actions workflow run.
 2. Configure environment variables in the `.env` file:
    ```
    SQLSERVER_PASSWORD=YourSecurePassword
@@ -255,5 +276,5 @@ To deploy to production using the published artifacts:
 
 - **Aspire simplifies container orchestration** - Configure everything in C# with strong typing
 - **Persistent volumes preserve data** - Both database and uploaded files survive container restarts
-- **Aspire CLI enables GitOps** - Generate deployment artifacts and publish images in CI/CD pipelines
+- **Aspire CLI enables GitOps** - Generate deployment artifacts and publish images in CI/CD pipelines using the aspire CLI commands `aspire publish` and `aspire do push`.
 - **Flexible deployment options** - Same configuration works for local development and production
