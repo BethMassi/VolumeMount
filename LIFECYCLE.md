@@ -93,7 +93,7 @@ var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
 
 The `aspire deploy` command creates a **fully containerized deployment** of your application on Docker Desktop. This simulates a production-like environment on your local machine.
 
-> ⚠️ **Note:** The `aspire deploy` command is in preview and behavior may change in future releases.
+> ⚠️ **Note:** As of January 2026, the `aspire deploy` command is in preview and behavior may change in future releases. Check the latest Aspire CLI documentation for updates.
 
 ### How It Works
 
@@ -225,6 +225,8 @@ Ensures the solution compiles successfully before deployment.
   run: dotnet tool install --global aspire.cli --prerelease
 ```
 
+> **Note:** The `--prerelease` flag installs the latest preview version. Once Aspire reaches general availability, you can remove this flag to install the stable version.
+
 The Aspire CLI is a .NET global tool that provides:
 - `aspire publish` - Generate Docker Compose files and deployment artifacts
 - `aspire do push` - Build and push container images to registries
@@ -268,9 +270,11 @@ aspire-output/
 - name: Push images with Aspire
   env:
     Parameters__registry_endpoint: ghcr.io
-    Parameters__registry_repository: bethmassi/volumemount
+    Parameters__registry_repository: your-org/your-repo
   run: aspire do push
 ```
+
+> **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values.
 
 **What `aspire do push` does:**
 - Builds Docker container images for projects with `WithRemoteImageTag()`
@@ -280,9 +284,9 @@ aspire-output/
   - `Parameters__registry_endpoint` → `registry-endpoint` parameter
   - `Parameters__registry_repository` → `registry-repository` parameter
 
-**Published Image:**
+**Published Image Example:**
 ```
-ghcr.io/bethmassi/volumemount/blazorweb:latest
+ghcr.io/your-org/your-repo/blazorweb:latest
 ```
 
 #### Step 5: Upload Deployment Artifacts
