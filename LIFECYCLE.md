@@ -27,7 +27,7 @@ The `aspire run` command starts your Aspire application in **development mode**.
 When you run `aspire run`:
 
 1. **Aspire Dashboard Launches** - A web-based dashboard starts (typically at `http://localhost:18888`)
-2. **Resources Start** - All resources defined in your `AppHost.cs` are orchestrated:
+2. **Resources Start** - All resources defined in your `AppHost.cs` are orchestrated. In this example, they are:
    - SQL Server container starts with persistent volume
    - Blazor Web project runs as a .NET process (not containerized)
    - Database is automatically created and migrated
@@ -50,6 +50,8 @@ info: Aspire.Hosting.DistributedApplication[0]
       Aspire version: 10.0.0
       Dashboard: http://localhost:18888/login?t=abc123xyz...
 ```
+
+Alternately, you can use an editor like Visual Studio Code to start debugging via the AppHost.
 
 ### Development Features
 
@@ -99,7 +101,7 @@ The `aspire deploy` command creates a **fully containerized deployment** of your
 
 When you run `aspire deploy`:
 
-1. **Docker Images are Built** - Your .NET projects are containerized:
+1. **Docker Images are Built** - In this example, the .NET projects are containerized:
    - Blazor Web app is built into a Docker image
    - Image is built using Dockerfile (generated or custom)
 2. **Docker Compose is Generated** - Aspire creates a `docker-compose.yaml` file
@@ -121,6 +123,8 @@ dotnet user-secrets set "Parameters:registry-repository" "your-org/your-repo" --
 aspire deploy
 ```
 
+> ⚠️ **Note:** If you do not set parameters before deploy, Aspire will prompt you for them.
+
 The command will:
 1. Build container images for projects marked with `WithRemoteImageTag()`
 2. Generate `docker-compose.yaml` in `./aspire-output/` directory
@@ -130,15 +134,18 @@ The command will:
 ### What Gets Deployed
 
 **Containers:**
-- `volumemount-sqlserver` - SQL Server with persistent data volume
-- `volumemount-blazorweb` - Blazor Web app with persistent uploads volume
-- `aspire-dashboard` (optional) - Monitoring dashboard
+- `aspire-volumemount-env` - Docker Compose stack 
+- `sqlserver` - SQL Server with persistent data volume
+- `blazorweb` - Blazor Web app with persistent uploads volume
+- `volumemount-env-dashboard` (optional) - Monitoring dashboard
 
 **Volumes:**
 - `volumemount-sqlserver-data` - Stores database files (`.mdf`, `.ldf`)
 - `volumemount-blazor-uploads` - Stores user-uploaded images
 
 ### Accessing the Deployed Application
+
+> **Note:** If pulling images from a private container registry, login first using your Docker Desktop terminal: `echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin`
 
 1. **View Containers in Docker Desktop** - All services appear in the Containers tab
 2. **Access Blazor Web App** - Navigate to `http://localhost:8080` (or configured port)
@@ -148,7 +155,7 @@ The command will:
 ### Key Configuration for Deployment
 
 ```csharp
-// Tag image for container registry
+// Configure image for deployment
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
     .WithRemoteImageTag("latest")
     .PublishAsDockerComposeService((resource, service) =>
@@ -225,13 +232,9 @@ Ensures the solution compiles successfully before deployment.
   run: dotnet tool install --global aspire.cli --prerelease
 ```
 
-> **Note:** The `--prerelease` flag installs the latest preview version. Once Aspire reaches general availability, you can remove this flag to install the stable version.
+> **Note:** The `--prerelease` flag installs the latest preview version. If you want to use the stable version, remove the prerelease flag.
 
-The Aspire CLI is a .NET global tool that provides:
-- `aspire publish` - Generate Docker Compose files and deployment artifacts
-- `aspire do push` - Build and push container images to registries
-- `aspire run` - Start application in development mode
-- `aspire deploy` - Deploy to Docker-compatible environments
+The Aspire CLI provides:
 
 #### Step 3: Publish Docker Compose Artifacts
 
@@ -274,10 +277,10 @@ aspire-output/
   run: aspire do push
 ```
 
-> **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values.
+> **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. They must be lowercase.
 
 **What `aspire do push` does:**
-- Builds Docker container images for projects with `WithRemoteImageTag()`
+- Builds Docker container images for projects.
 - Tags images with configured registry endpoint and repository
 - Pushes images to GitHub Container Registry (ghcr.io)
 - Uses parameters defined in `AppHost.cs`:
@@ -298,9 +301,10 @@ ghcr.io/your-org/your-repo/blazorweb:latest
     name: aspire-deployment-files
     path: ./aspire-output/
     retention-days: 30
+    include-hidden-files: true
 ```
 
-Artifacts are available for download from the Actions workflow run for 30 days.
+In this example, artifacts are available for download from the Actions workflow run for 30 days. Hidden files are included so that the .Env file is also available in the artifacts.
 
 ### Container Registry Configuration in AppHost
 
@@ -325,12 +329,12 @@ After the workflow completes, you have everything needed for production deployme
 
 2. **Configure Environment Variables** in `.env`:
    ```bash
-   Parameters__sqlserver_password=YourSecurePassword
-   Parameters__registry_endpoint=ghcr.io
-   Parameters__registry_repository=bethmassi/volumemount
+   BLAZORWEB_IMAGE=ghcr.io/bethmassi/volumemount/blazorweb:latest 
+   BLAZORWEB_PORT=8080
+   SQLSERVER_PASSWORD=YourSecurePassword
    ```
 
-3. **Login to Container Registry** (if image is private):
+3. **Login to Container Registry** (if image is private). You can do this locally in your Docker Desktop terminal:
    ```bash
    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
    ```
