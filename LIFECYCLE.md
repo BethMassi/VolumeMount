@@ -1,6 +1,6 @@
 # Aspire App Lifecycle Guide
 
-This guide provides a high-level overview of the lifecycle phases of a .NET Aspire application, from development through local deployment to production release. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
+This guide provides a high-level overview of the lifecycle phases of an Aspire application, from development through local deployment to production release. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
 
 > 📚 For complete Aspire documentation, visit [aspire.dev](https://aspire.dev/)
 
@@ -119,7 +119,7 @@ dotnet user-secrets set "Parameters:sqlserver-password" "YourSecurePassword123!"
 dotnet user-secrets set "Parameters:registry-endpoint" "ghcr.io" --project VolumeMount.AppHost
 dotnet user-secrets set "Parameters:registry-repository" "your-org/your-repo" --project VolumeMount.AppHost
 
-# Login to GitHub Container Registry before deploying
+# Login to your GitHub Container Registry before deploying
 echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
 
 # Deploy to Docker Desktop
@@ -129,12 +129,12 @@ aspire deploy
 > ⚠️ **Note:** If you do not set parameters before deploy, Aspire will prompt you for them.
 
 The command will:
-1. Build container images for projects marked with `WithRemoteImageTag()`
+1. Build container images for projects
 2. Generate `docker-compose.yaml` in `./aspire-output/` directory
 3. Start all containers using Docker Compose
 4. Create and mount persistent volumes
 
-### What Gets Deployed
+### What Gets Deployed (in this example)
 
 **Containers:**
 - `aspire-volumemount-env` - Docker Compose stack 
@@ -279,7 +279,7 @@ aspire-output/
 > **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. They must be lowercase.
 
 **What `aspire do push` does:**
-- Builds Docker container images for projects.
+- Builds Docker container images for projects
 - Tags images with configured registry endpoint and repository
 - Pushes images to GitHub Container Registry (ghcr.io)
 - Uses parameters defined in `AppHost.cs`:
@@ -361,7 +361,7 @@ After the workflow completes, you have everything needed for production deployme
 
 ## Lifecycle Summary
 
-| Phase | Command | Purpose | Environment | Blazor Web | SQL Server |
+| Phase | Command | Purpose | Environment | App | Database |
 |-------|---------|---------|-------------|------------|------------|
 | **Development** | `aspire run` | Inner-loop coding & debugging | Local machine | .NET process | Container |
 | **Local Deploy** | `aspire deploy` | Test containerized app locally | Docker Desktop | Container | Container |
