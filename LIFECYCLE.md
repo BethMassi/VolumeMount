@@ -1,6 +1,6 @@
 # Aspire App Lifecycle Guide
 
-This guide provides a high-level overview of the lifecycle phases of an Aspire application, from development through local deployment to production release. By using the same AppHost.cs configuration across all phases, you ensure consistency and reduce configuration drift between environments. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
+This guide provides a high-level overview of the lifecycle phases of an Aspire application, from development through local deployment to production release. By using the same `AppHost` configuration across all phases, you ensure consistency and reduce configuration drift between environments. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
 
 > 📚 For complete Aspire documentation, visit [aspire.dev](https://aspire.dev/)
 
