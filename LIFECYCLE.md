@@ -119,6 +119,9 @@ dotnet user-secrets set "Parameters:sqlserver-password" "YourSecurePassword123!"
 dotnet user-secrets set "Parameters:registry-endpoint" "ghcr.io" --project VolumeMount.AppHost
 dotnet user-secrets set "Parameters:registry-repository" "your-org/your-repo" --project VolumeMount.AppHost
 
+# Login to GitHub Container Registry before deploying
+echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+
 # Deploy to Docker Desktop
 aspire deploy
 ```
@@ -144,8 +147,6 @@ The command will:
 - `volumemount-blazor-uploads` - Stores user-uploaded images
 
 ### Accessing the Deployed Application
-
-> **Note:** If pulling images from a private container registry, login first using your Docker Desktop terminal: `echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin`
 
 1. **View Containers in Docker Desktop** - All services appear in the Containers tab
 2. **Access Blazor Web App** - Navigate to `http://localhost:8080` (or configured port)
@@ -233,8 +234,6 @@ Ensures the solution compiles successfully before deployment.
 ```
 
 > **Note:** The `--prerelease` flag installs the latest preview version. If you want to use the stable version, remove the prerelease flag.
-
-The Aspire CLI provides:
 
 #### Step 3: Publish Docker Compose Artifacts
 
