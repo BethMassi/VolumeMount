@@ -1,6 +1,6 @@
 # Aspire App Lifecycle Guide
 
-This guide provides a high-level overview of the lifecycle phases of an Aspire application, from development through local deployment to production release. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
+This guide provides a high-level overview of the lifecycle phases of an Aspire application, from development through local deployment to production release. By using the same AppHost.cs configuration across all phases, you ensure consistency and reduce configuration drift between environments. This example demonstrates how Aspire orchestrates containerized applications with persistent storage and CI/CD automation.
 
 > 📚 For complete Aspire documentation, visit [aspire.dev](https://aspire.dev/)
 
@@ -30,7 +30,7 @@ When you run `aspire run`:
 2. **Resources Start** - All resources defined in your `AppHost.cs` are orchestrated. In this example, they are:
    - SQL Server container starts with persistent volume
    - Blazor Web project runs as a .NET process (not containerized)
-   - Database is automatically created and migrated
+   - Database is automatically created and migrated (containerized)
 3. **Live Debugging** - You can attach debuggers, set breakpoints, and modify code with hot reload
 4. **Telemetry & Logs** - Dashboard provides real-time logs, metrics, and distributed traces
 
@@ -47,7 +47,7 @@ aspire run
 The console will display the dashboard URL with a login token:
 ```
 info: Aspire.Hosting.DistributedApplication[0]
-      Aspire version: 10.0.0
+      Aspire version: 13.1.0
       Dashboard: http://localhost:18888/login?t=abc123xyz...
 ```
 
@@ -55,8 +55,8 @@ Alternately, you can use an editor like Visual Studio Code to start debugging vi
 
 ### Development Features
 
-- **Hot Reload** - Blazor code changes apply instantly without restart
-- **SQL Server Debugging** - Connect SSMS to `localhost:1433` with configured password
+- **Debugging / Hot Reload** - Set breakponts, debug, make changes that apply instantly without restart
+- **SQL Server Profiling** - Connect SSMS & database tools to persistent `localhost:1433` with configured password
 - **Dashboard Views**:
   - **Resources** - See all services, containers, and projects
   - **Console Logs** - Real-time output from each resource
@@ -71,7 +71,8 @@ Alternately, you can use an editor like Visual Studio Code to start debugging vi
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
     .WithExternalHttpEndpoints()
     .WithReference(sqlDatabase)
-    .WaitFor(sqlDatabase);
+    .WaitFor(sqlDatabase)
+...
 
 // SQL Server runs in container with persistent volume
 var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
@@ -81,7 +82,7 @@ var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
 
 ### When to Use Development Mode
 
-- Writing and testing new features
+- Writing and designing new features
 - Debugging application issues
 - Database schema changes and migrations
 - Performance profiling with telemetry
@@ -103,12 +104,11 @@ When you run `aspire deploy`:
 
 1. **Docker Images are Built** - In this example, the .NET projects are containerized:
    - Blazor Web app is built into a Docker image
-   - Image is built using Dockerfile (generated or custom)
 2. **Docker Compose is Generated** - Aspire creates a `docker-compose.yaml` file
 3. **Containers Start** - All services run as containers on Docker Desktop:
-   - SQL Server container with persistent volume
-   - Blazor Web container with persistent upload volume
-   - Aspire Dashboard container (optional)
+   - SQL Server container with persistent volume for relational data
+   - Blazor Web container with persistent volume for picture uploads storage
+   - Aspire Dashboard container (optional, specified by compose parameter in AppHost)
 4. **Volumes are Created** - Named volumes persist data between deployments
 
 ### Running Local Deployment
@@ -140,7 +140,7 @@ The command will:
 - `aspire-volumemount-env` - Docker Compose stack 
 - `sqlserver` - SQL Server with persistent data volume
 - `blazorweb` - Blazor Web app with persistent uploads volume
-- `volumemount-env-dashboard` (optional) - Monitoring dashboard
+- `volumemount-env-dashboard` - Monitoring dashboard
 
 **Volumes:**
 - `volumemount-sqlserver-data` - Stores database files (`.mdf`, `.ldf`)
@@ -150,14 +150,15 @@ The command will:
 
 1. **View Containers in Docker Desktop** - All services appear in the Containers tab
 2. **Access Blazor Web App** - Navigate to `http://localhost:8080` (or configured port)
-3. **Access Aspire Dashboard** - Navigate to `http://localhost:18888` with login token from logs
-4. **Connect to SQL Server** - Use SSMS with `localhost:1433`
+3. **Access Aspire Dashboard** - Navigate to `http://localhost:18888`  (or configured port) with login token from logs
+4. **Connect to SQL Server** - Use SSMS with `localhost:1433` and configured password
 
 ### Key Configuration for Deployment
 
 ```csharp
 // Configure image for deployment
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
+...
     .WithRemoteImageTag("latest")
     .PublishAsDockerComposeService((resource, service) =>
     {
@@ -202,7 +203,7 @@ The `.github/workflows/aspire-build-push.yml` workflow automates the build, publ
 The workflow runs on every push to `main` and performs these steps:
 
 1. **Build & Restore** - Compile the .NET solution
-2. **Install Aspire CLI** - Install the global Aspire CLI tool
+2. **Install Aspire CLI** - Install the Aspire CLI
 3. **Publish Docker Compose Artifacts** - Generate deployment files with `aspire publish`
 4. **Push Container Images** - Build and push images to GitHub Container Registry with `aspire do push`
 5. **Upload Artifacts** - Store deployment files for download
@@ -276,7 +277,7 @@ aspire-output/
   run: aspire do push
 ```
 
-> **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. They must be lowercase.
+> ⚠️ **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. _Values must be lowercase._
 
 **What `aspire do push` does:**
 - Builds Docker container images for projects
@@ -332,18 +333,15 @@ After the workflow completes, you have everything needed for production deployme
    BLAZORWEB_PORT=8080
    SQLSERVER_PASSWORD=YourSecurePassword
    ```
-
-3. **Login to Container Registry** (if image is private). You can do this locally in your Docker Desktop terminal:
-   ```bash
-   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-   ```
-
-4. **Deploy with Docker Compose**:
+   
+3. **Deploy with Docker Compose**:
    ```bash
    docker-compose up -d
    ```
+   
+> ⚠️ **Note:** If the images are private, you will need to login to the GitHub Container Registry before deploying.
 
-5. **Verify Deployment**:
+4. **Verify Deployment**:
    ```bash
    docker-compose ps
    docker-compose logs -f
@@ -365,7 +363,7 @@ After the workflow completes, you have everything needed for production deployme
 |-------|---------|---------|-------------|------------|------------|
 | **Development** | `aspire run` | Inner-loop coding & debugging | Local machine | .NET process | Container |
 | **Local Deploy** | `aspire deploy` | Test containerized app locally | Docker Desktop | Container | Container |
-| **Release** | GitHub Actions | Publish to production | Cloud/Server | Container | Container |
+| **Release** | GitHub Actions | Publish to staging/production | Cloud/Server | Container | Container |
 
 ## Key Aspire Components
 
@@ -429,32 +427,6 @@ service.AddVolume(new Volume
 - Stores user-uploaded images
 - Mounted at `/app/wwwroot/uploads` inside container
 - Persists across deployments
-
----
-
-## Best Practices
-
-### Development Phase
-- ✅ Use `aspire run` for fast iteration and debugging
-- ✅ Enable hot reload for Blazor components
-- ✅ Use Aspire Dashboard for real-time telemetry
-- ✅ Connect SQL tools directly to localhost:1433
-- ✅ Store secrets in user-secrets, not appsettings.json
-
-### Local Deployment Phase
-- ✅ Test with `aspire deploy` before committing
-- ✅ Verify volume mounts and data persistence
-- ✅ Check container logs in Docker Desktop
-- ✅ Validate networking between containers
-- ✅ Test with production-like environment variables
-
-### Release Phase
-- ✅ Use GitHub Actions for automated deployments
-- ✅ Version container images with tags
-- ✅ Store secrets in GitHub Secrets or CI/CD vault
-- ✅ Test deployments in staging before production
-- ✅ Keep `docker-compose.yaml` under version control
-- ✅ Document required environment variables in `.env` template
 
 ---
 
