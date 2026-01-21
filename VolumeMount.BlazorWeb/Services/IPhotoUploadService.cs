@@ -5,5 +5,7 @@ namespace VolumeMount.BlazorWeb.Services
     public interface IPhotoUploadService
     {
         Task<bool> UploadPhotoAsync(IBrowserFile photo);
+        string PlaceholderImage { get; }
+
     }
 }

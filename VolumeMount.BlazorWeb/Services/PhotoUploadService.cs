@@ -8,13 +8,15 @@ namespace VolumeMount.BlazorWeb.Services
     {
         private readonly string _uploadPath;
         private readonly ILogger<PhotoUploadService> _logger;
-
+        private readonly string _placeholderImage;
+        public string PlaceholderImage => _placeholderImage;
         public PhotoUploadService(
             IOptions<PhotoUploadConfiguration> options,
             ILogger<PhotoUploadService> logger)
         {
             _uploadPath = options?.Value?.UploadPath ?? "/uploads";
             _logger = logger;
+            _placeholderImage = GetPlaceholderImage();
         }
 
         public async Task<bool> UploadPhotoAsync(IBrowserFile photo)
@@ -41,5 +43,18 @@ namespace VolumeMount.BlazorWeb.Services
                 throw;                    
             }
         }
+
+        private string GetPlaceholderImage() 
+        {
+            var placeholderPath = Path.Combine(Environment.CurrentDirectory, "wwwroot", "placeholder-image.jpg");
+            if (File.Exists(placeholderPath))
+            {
+                var imageBytes = File.ReadAllBytes(placeholderPath);
+                var base64String = Convert.ToBase64String(imageBytes);
+                return $"data:image/jpeg;base64,{base64String}";
+            } else 
+            throw new FileNotFoundException("Placeholder image not found.", placeholderPath);
+        }
+
     }
 }

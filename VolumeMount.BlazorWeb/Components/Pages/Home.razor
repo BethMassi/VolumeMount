@@ -5,10 +5,11 @@
 @inject Services.IPhotoDeleteService PhotoDeleteService
 
 @page "/"
+@using VolumeMount.BlazorWeb.Services
 
 <PageTitle>Home</PageTitle>
 
-<h1>Upload Picture</h1>
+<h1>Upload Pictures</h1>
 
 <EditForm Model="@model" OnSubmit="@HandleSubmit">
 	<label for="pictureFile" class="form-label">Select Image</label>
@@ -27,9 +28,6 @@
 		}
 	</button>
 </EditForm>
-
-<UploadedFilesList @ref="uploadedFilesList" OnFilesChanged="OnFilesChanged" />
-
 @if (!string.IsNullOrEmpty(message))
 {
 	<div class="alert @alertClass mt-3">
@@ -40,6 +38,9 @@
 <div class="alert alert-info mt-3">
 		<strong>Current Directory:</strong> @env
 </div>
+
+<UploadedFilesList @ref="uploadedFilesList" OnFilesChanged="OnFilesChanged" />
+
 @code
 {
 	private IBrowserFile? selectedFile;
@@ -56,6 +57,12 @@
 	public class UploadModel
 	{
 		public string PreviewImageUrl { get; set; } = string.Empty;
+
+	}
+
+	protected override async Task OnInitializedAsync()
+	{	
+		model.PreviewImageUrl = PhotoUploadService.PlaceholderImage;
 	}
 
 	private async Task OnFileChange(InputFileChangeEventArgs e)
@@ -91,7 +98,7 @@
 			// Reset the form
 			fileSelected = false;
 			selectedFile = null;
-			model.PreviewImageUrl = string.Empty;
+			model.PreviewImageUrl = PhotoUploadService.PlaceholderImage;
 
 			// Refresh the uploaded files list
 			if (uploadedFilesList != null)
@@ -112,6 +119,8 @@
 	private async Task OnFilesChanged()
 	{
 		// Optional: Handle any additional logic when files are deleted
+		message = "File list updated.";
+		alertClass = "alert-info";
 		await Task.CompletedTask;
 	}
 	
