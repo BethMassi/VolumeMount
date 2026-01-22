@@ -68,18 +68,26 @@ Alternately, you can use an editor like Visual Studio Code to start debugging vi
 
 ### Key Configuration in AppHost.cs
 
+These are the key parts of the `AppHost.cs` that configure the resources in this example. 
+
 ```csharp
+// SQL Server always runs in container with persistent volume
+var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
+    .WithDataVolume("volumemount-sqlserver-data")
+    .WithLifetime(ContainerLifetime.Persistent)
+...
+
+// Add SQL database
+var sqlDatabase = sqlserver.AddDatabase("sqldb");
+
 // Development uses Blazor project directly (not containerized)
+// Blazor project waits for the database to be available before starting
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
     .WithExternalHttpEndpoints()
     .WithReference(sqlDatabase)
     .WaitFor(sqlDatabase)
 ...
 
-// SQL Server runs in container with persistent volume
-var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
-    .WithDataVolume("volumemount-sqlserver-data")
-    .WithLifetime(ContainerLifetime.Persistent);
 ```
 
 ### When to Use Development Mode
@@ -96,7 +104,7 @@ var sqlserver = builder.AddSqlServer("sqlserver", password: sqlPassword)
 
 ### What is `aspire deploy`?
 
-The `aspire deploy` command creates a **fully containerized deployment** of your application in the compute environment(s) you define. This simulates a production-like environment on your local machine. In this example, local containers are created on Docker Desktop.
+The `aspire deploy` command creates a **fully containerized deployment** of your application in the compute environment(s) you define. This simulates a production-like environment on your local machine. In this example, local containers are created on Docker Desktop using the [Docker Integration](https://aspire.dev/integrations/compute/docker/).
 
 > ⚠️ **Note:** As of January 2026, the `aspire deploy` command is in preview and behavior may change in future releases. Check the latest Aspire CLI documentation for updates.
 
@@ -104,8 +112,8 @@ The `aspire deploy` command creates a **fully containerized deployment** of your
 
 When you run `aspire deploy`:
 
-1. **Docker Images are Built** - In this example, the .NET project is containerized:
-   - Blazor Web app is built into a Docker image and pushed to the GitHub Container Registry
+1. **Docker Images are Built** - In this example, the Blazor project is containerized:
+   - Blazor Web app is built into a Docker image and pushed to GitHub Container Registry
 2. **Docker Compose is Generated** - Aspire creates a `docker-compose.yaml` file
 3. **Containers Start** - All services run as containers on Docker Desktop:
    - SQL Server container with persistent volume for relational data
@@ -158,6 +166,32 @@ Aspire will display the URLs in the output from the `aspire deploy` command. In 
 ### Key Configuration for Deployment
 
 ```csharp
+// Add Docker Compose environment. 
+// This is the compute environment from the Aspire.Docker.Hosting package.
+var compose = builder.AddDockerComposeEnvironment("volumemount-env")
+    .WithProperties(env =>
+    {
+        env.DashboardEnabled = true;
+    })
+    .ConfigureComposeFile(composeFile =>
+     {
+         // Add the blazor-uploads volume to the top-level volumes section
+         composeFile.AddVolume(new Volume
+                               {
+                                   Name = "volumemount-blazor-uploads",
+                                   Driver = "local"
+                               });
+     });
+...
+
+//Define the container registry to push images into.
+//If we omit this code, images will be pushed locally.
+var endpoint = builder.AddParameter("registry-endpoint");
+    var repository = builder.AddParameter("registry-repository");
+    #pragma warning disable ASPIRECOMPUTE003
+    builder.AddContainerRegistry("container-registry", endpoint, repository);
+
+
 // Configure image for deployment
 var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
 ...
@@ -174,7 +208,7 @@ var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
             ReadOnly = false
         });
         
-        // Configure permissions for file uploads
+        // Configure write access permissions for file uploads 
         service.User = "root";
         service.Command = new List<string>
         {
@@ -198,21 +232,21 @@ var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
 
 ### What is the GitHub Actions Workflow?
 
-The `.github/workflows/aspire-build-push.yml` workflow automates the build, publish, and deployment process using the **Aspire CLI** in a CI/CD pipeline.
+The `.github/workflows/aspire-build-push.yml` workflow automates the build, publish, and deployment process using the **Aspire CLI** in a CI/CD pipeline. The Aspire CLI is be used to build your app, publish artifacts and push images.   
 
 ### How This Example Works
 
 The workflow runs on every push to `main` and performs these steps:
 
-1. **Build & Restore** - Compile the Blazor (.NET) web app
+1. **Setup Environment** - Install .NET
 2. **Install Aspire CLI** - Install the Aspire CLI
-3. **Publish Docker Compose Artifacts** - Generate deployment files with `aspire publish`
-4. **Push Container Images** - Build and push images to GitHub Container Registry with `aspire do push`
+3. **Build and Push Container Images** - Build app and push image to GitHub Container Registry with `aspire do push`
+4. **Publish Docker Compose Artifacts** - Generate deployment files with `aspire publish`
 5. **Upload Artifacts** - Store deployment files for download
 
 ### Workflow Steps Explained
 
-#### Step 1: Setup & Build
+#### Step 1: Setup Environment
 
 ```yaml
 - name: Setup .NET
@@ -220,16 +254,8 @@ The workflow runs on every push to `main` and performs these steps:
   with:
     dotnet-version: '10.0.x'
 
-- name: Restore dependencies
-  run: dotnet restore
-
-- name: Build solution
-  run: dotnet build --configuration Release --no-restore
 ```
-
-Ensures the Blazor solution compiles successfully before deployment.
-
-#### Step 2: Install Aspire CLI
+#### Step 2: Install Aspire CLI 
 
 ```yaml
 - name: Install Aspire CLI
@@ -238,7 +264,40 @@ Ensures the Blazor solution compiles successfully before deployment.
     curl -sSL https://aspire.dev/install.sh | bash
 ```
 
-#### Step 3: Publish Docker Compose Artifacts
+#### Step 3. Build App, Create & Push Image to GHCR
+```yaml
+- name: Login to GHCR
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+
+- name: Build and Push images with Aspire
+  env:
+    Parameters__registry_endpoint: ghcr.io
+    Parameters__registry_repository: your-org/your-repo
+  run: aspire do push
+```
+
+> ⚠️ **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. _Values must be lowercase._
+
+**What `aspire do push` does:**
+- Analyzes your `AppHost.cs` configuration
+- Restores dependenceies and builds the project
+- Builds Docker container images for project resources
+- Tags images with configured registry endpoint and repository
+- Pushes images to GitHub Container Registry (ghcr.io)
+- Uses parameters defined in `AppHost.cs`:
+  - `Parameters__registry_endpoint` → `registry-endpoint` parameter
+  - `Parameters__registry_repository` → `registry-repository` parameter
+
+**Published Image Example:**
+```
+ghcr.io/your-org/your-repo/blazorweb:latest
+```
+
+#### Step 4: Publish Docker Compose Artifacts
 
 ```yaml
 - name: Prepare Docker Compose with Aspire
@@ -260,38 +319,6 @@ Ensures the Blazor solution compiles successfully before deployment.
 aspire-output/
 ├── docker-compose.yaml    # Service definitions for all containers
 └── .env                   # Template for required environment variables
-```
-
-#### Step 4: Push Container Images to GHCR
-
-```yaml
-- name: Login to GHCR
-  uses: docker/login-action@v3
-  with:
-    registry: ghcr.io
-    username: ${{ github.actor }}
-    password: ${{ secrets.GITHUB_TOKEN }}
-
-- name: Push images with Aspire
-  env:
-    Parameters__registry_endpoint: ghcr.io
-    Parameters__registry_repository: your-org/your-repo
-  run: aspire do push
-```
-
-> ⚠️ **Note:** Replace `your-org/your-repo` with your actual GitHub organization and repository name, or use `${{ github.repository_owner }}/${{ github.event.repository.name }}` for automatic values. _Values must be lowercase._
-
-**What `aspire do push` does:**
-- Builds Docker container images for projects
-- Tags images with configured registry endpoint and repository
-- Pushes images to GitHub Container Registry (ghcr.io)
-- Uses parameters defined in `AppHost.cs`:
-  - `Parameters__registry_endpoint` → `registry-endpoint` parameter
-  - `Parameters__registry_repository` → `registry-repository` parameter
-
-**Published Image Example:**
-```
-ghcr.io/your-org/your-repo/blazorweb:latest
 ```
 
 #### Step 5: Upload Deployment Artifacts
@@ -384,19 +411,12 @@ The `AppHost.cs` file is the single source of truth for your application archite
 
 ### Docker Compose Environment
 
-In this example, Aspire uses Docker Compose as its deployment target, configured via:
+In this example, Aspire uses Docker Compose as its compute environment deployment target. This creates a Docker Compose stack which includes the Aspire dashboard. This is available in the [Docker Integration](https://aspire.dev/integrations/compute/docker/) package.
 
 ```csharp
 var compose = builder.AddDockerComposeEnvironment("volumemount-env")
     .WithProperties(env => { env.DashboardEnabled = true; })
-    .ConfigureComposeFile(composeFile =>
-    {
-        composeFile.AddVolume(new Volume
-        {
-            Name = "volumemount-blazor-uploads",
-            Driver = "local"
-        });
-    });
+...
 ```
 **Benefits:**
 - Industry-standard deployment format
@@ -405,7 +425,7 @@ var compose = builder.AddDockerComposeEnvironment("volumemount-env")
 - Enables persistent storage with named volumes
 - Simplifies networking between services
 
-The environments your app will be deployed to depends on the compute environment that you register. Compute environments are APIs in the code that implement `IComputeEnvironment`. For more info, see [Compute Environments](https://aspire.dev/deployment/overview/#compute-environments).
+> ⚠️ **Note**: The environments your app will be deployed to depends on the compute environment that you register. Compute environments are APIs in the code that implement `IComputeEnvironment`. For more info, see [Compute Environments](https://aspire.dev/deployment/overview/#compute-environments).
 
 ### Persistent Volumes
 
