@@ -23,7 +23,6 @@ permissions:
   contents: read
   packages: write
   id-token: write
-  attestations: write
 
 jobs:
   build-and-push:
@@ -48,8 +47,18 @@ jobs:
           which aspire
           aspire --version
       
-      - name: Build Aspire solution
-        run: aspire do build --log-level debug
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Build and Push images with Aspire
+        env:
+          Parameters__registry_endpoint: ghcr.io
+          Parameters__registry_repository: bethmassi/volumemount
+        run: aspire do push
         
       - name: Prepare Docker Compose with Aspire
         id: aspire_publish
@@ -65,17 +74,4 @@ jobs:
           path: ./aspire-output/
           if-no-files-found: warn
           retention-days: 30
-          include-hidden-files: true
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Push images with Aspire
-        env:
-          Parameters__registry_endpoint: ghcr.io
-          Parameters__registry_repository: bethmassi/volumemount
-        run: aspire do push
+          include-hidden-files: true  
