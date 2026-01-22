@@ -38,14 +38,14 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build Aspire solution
-        run: aspire do build --log-level debug
-
       - name: Install Aspire CLI
         run: |
           echo "Installing Aspire CLI from install script..."
           curl -sSL https://aspire.dev/install.sh | bash
 
+      - name: Build Aspire solution
+        run: aspire do build --log-level debug
+        
       - name: Verify Aspire CLI installation
         run: |
           which aspire
