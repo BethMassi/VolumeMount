@@ -58,7 +58,7 @@ jobs:
         env:
           Parameters__registry_endpoint: ghcr.io
           Parameters__registry_repository: bethmassi/volumemount
-        run: aspire do push
+        run: aspire do push --log-level debug
         
       - name: Prepare Docker Compose with Aspire
         id: aspire_publish
