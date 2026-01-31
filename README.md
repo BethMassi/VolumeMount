@@ -13,6 +13,29 @@ This sample demonstrates how to use <a href="https://aspire.dev">Aspire</a> to o
 - **Identity management** - ASP.NET Core Identity with SQL Server backend
 - **Blazor Server UI** - Interactive web application for file uploads
 
+## Running this Sample
+
+To run this sample, first install the [Aspire prerequisites](https://aspire.dev/get-started/prerequisites/) and the [Aspire CLI](https://aspire.dev/get-started/install-cli/).
+
+```bash
+# Navigate to the project root folder
+cd VolumeMount
+
+# Start the application
+aspire run
+```
+
+Aspire will auto-detect and run the `AppHost`. The console will display the dashboard URL with a login token:
+```
+info: Aspire.Hosting.DistributedApplication[0]
+      Aspire version: 13.1.0
+      Dashboard: http://localhost:18888/login?t=abc123xyz...
+```
+
+Alternately, you can use an editor like Visual Studio Code to start debugging via the `AppHost`.
+
+Open the dashboard link and click the `blazorweb` resource URL to launch the app. 
+
 ## What This Sample Demonstrates
 
 ### Aspire AppHost Configuration
@@ -117,29 +140,6 @@ var blazorweb = builder.AddProject<Projects.VolumeMount_BlazorWeb>("blazorweb")
   - Uploaded images persist across container restarts
   - Multiple container instances can share the same upload storage
   - Files remain available after application updates
-
-## Running this Sample
-
-To run this sample, first install the [Aspire prerequisites](https://aspire.dev/get-started/prerequisites/) and the [Aspire CLI](https://aspire.dev/get-started/install-cli/).
-
-```bash
-# Navigate to the project root folder
-cd VolumeMount
-
-# Start the application
-aspire run
-```
-
-Aspire will auto-detect and run the `AppHost`. The console will display the dashboard URL with a login token:
-```
-info: Aspire.Hosting.DistributedApplication[0]
-      Aspire version: 13.1.0
-      Dashboard: http://localhost:18888/login?t=abc123xyz...
-```
-
-Alternately, you can use an editor like Visual Studio Code to start debugging via the `AppHost`.
-
-Open the dashboard link and click the `blazorweb` resource URL to launch the app. 
 
 ## The Aspire App Lifecycle
 
