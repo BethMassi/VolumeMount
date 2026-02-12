@@ -1,5 +1,10 @@
 {
   "servers": {
+    "aspire": {
+      "type": "stdio",
+      "command": "aspire",
+      "args": ["mcp", "start"]
+    },    
     "aspire-dashboard": {
       "type": "http",
       "url": "https://localhost:17050/mcp",
@@ -9,3 +14,5 @@
     }
   }
 }
+
+
