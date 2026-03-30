@@ -30,8 +30,6 @@ services:
       - "-c"
       - "chown -R app:app /app/wwwroot/uploads && chmod -R 755 /app/wwwroot/uploads && exec su app -c 'dotnet /app/VolumeMount.BlazorWeb.dll'"
     environment:
-      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES: "true"
-      OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES: "true"
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       HTTP_PORTS: "${BLAZORWEB_PORT}"
@@ -41,7 +39,7 @@ services:
       SQLDB_USERNAME: "sa"
       SQLDB_PASSWORD: "${SQLSERVER_PASSWORD}"
       SQLDB_URI: "mssql://sa:${SQLSERVER_PASSWORD}@sqlserver:1433/sqldb"
-      SQLDB_JDBCCONNECTIONSTRING: "jdbc:sqlserver://sqlserver:1433;trustServerCertificate=true;databaseName=sqldb"
+      SQLDB_JDBCCONNECTIONSTRING: "jdbc:sqlserver://sqlserver:1433;databaseName=sqldb;trustServerCertificate=true"
       SQLDB_DATABASENAME: "sqldb"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://volumemount-env-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
