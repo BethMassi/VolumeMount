@@ -28,7 +28,7 @@ aspire run
 Aspire will auto-detect and run the `AppHost`. The console will display the dashboard URL with a login token:
 ```
 info: Aspire.Hosting.DistributedApplication[0]
-      Aspire version: 13.1.0
+      Aspire version: 13.2.0
       Dashboard: http://localhost:18888/login?t=abc123xyz...
 ```
 
